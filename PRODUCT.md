@@ -1,0 +1,142 @@
+# Product
+
+<!-- impeccable:product-schema 1 -->
+
+## Platform
+
+web
+
+## Stack
+
+Static HTML/CSS/JS, rendered by a PowerShell build script, deployed to GitHub
+Pages. User-selected on 2026-09-18 over Astro and a Node-based build, to keep a
+C++ repository free of an npm dependency tree.
+
+## Users
+
+Someone who owns an RTX card, already knows what DLSS does for games, and wants
+to know whether the same thing can be pointed at video. [inferred from the
+product's own requirements and the README's framing]
+
+They arrive from a link, a forum post, or the repository itself, and the
+decision in front of them is whether to download 377 MB of unsigned community
+software and run it. That decision is made on evidence, not on adjectives: the
+question is always "does it actually look better, and by how much". [inferred]
+
+A second, smaller audience builds from source or integrates: `docs/BUILDING.md`,
+the core package, and the provenance attestation exist for them. [confirmed by
+the repository's contents]
+
+## Product Purpose
+
+Run a video, photo or GIF through NVIDIA's DLSS 5 neural renderer, then look at
+the result next to the original on the same frame. Success is the visitor
+seeing the difference for themselves and deciding on it.
+
+## Positioning
+
+Rendering happens while you watch, not as an export queue: press `D` and
+playback continues on rendered frames seconds later, while the session keeps
+filling in the rest of the video nearest the playhead first. The original and
+the render stay in step, so they can be compared on one frame at one moment
+without moving the playhead.
+
+Neighboring products do offline upscaling with a progress bar. The live render,
+the whole-video coverage model, and the frame-accurate comparison are the parts
+that could not be truthfully copied.
+
+## Operating Context
+
+Windows only. Needs an RTX card and NVIDIA driver 610.47 or newer. The player
+ships as a zip that must be unpacked into a new, empty folder with
+`neural-runtime/` kept beside the executable. Sources are local files, pasted
+public YouTube links, or seven bundled game trailers.
+
+Renders are cached and reused only when the source, the runtime and the neural
+settings all still match.
+
+## Capabilities and Constraints
+
+Confirmed from `README.md` and `CHANGELOG.md` at 0.28.3:
+
+- Live rendering with seek anywhere, rendered or not; nothing rendered is
+  discarded on seek.
+- Compare views (Split, Wipe, Difference, Side by side, 2 x 2, and RTX VSR as
+  a view of its own) and a Mix control, without moving the playhead.
+- Export: PNG/JPEG for photos, GIF for animations, MP4/MKV for video; MKV keeps
+  source audio, subtitles and chapters without re-encoding. The same export
+  runs from a terminal with `dlss5-convert`, on files or whole folders.
+- RTX Video Super Resolution as the playback upscaler, on by default wherever
+  the window shows a video larger than it is, and the default upscaler for
+  Super Resolution exports (since 0.28.1; measured in
+  `docs/measurements/vsr-quality-20261002/`).
+- Optional DLSS Super Resolution on top, off by default; its output follows the
+  display unless a rung is pinned.
+- Neural settings at `Ctrl+N`, re-rendering the paused frame on change.
+- Two packages: a complete 377 MB zip with the pinned neural runtime, and a
+  36 MB core zip without it.
+- The neural runtime is a modified, unsigned community build. This is not
+  incidental and must never be softened or omitted.
+- Not an NVIDIA product. Community project.
+- Verified on an RTX 5090 (0.26.2) and an RTX 4080 SUPER (0.26.1).
+
+## Brand Commitments
+
+- The name is "DLSS 5 Video Player".
+- `assets/DLSSVideoPlayer.ico` is the existing mark.
+- MIT licensed; third-party notices in `THIRD_PARTY.md`.
+- The project's written voice is plain, specific and measured: it states
+  numbers, names what broke, and does not sell. Marketing copy that overstates
+  would be off-voice against every other document in the repository. [inferred
+  from README and CHANGELOG prose, which is unusually disciplined]
+- The community-project and unsigned-runtime disclaimers are binding and appear
+  wherever a download is offered.
+
+## Evidence on Hand
+
+Real, in the repository, usable without fabrication:
+
+- `docs/screenshots/current/original-comparison.jpg` / `neural-playback.jpg` -
+  one paused frame at default settings, only Neural Rendering switched between
+  the two captures (RTX 5090, 2 October 2026). Provenance in
+  `docs/screenshots/README.md`.
+- `docs/media/stills/` - five unscaled matched crops of a source frame and the
+  player's render of it at default settings (007 First Light, Resident Evil
+  Requiem, GTA VI, and one Assassin's Creed Shadows frame where the render is
+  worse), each with a `.provenance.json`.
+- `docs/screenshots/current/player-start.jpg` (the current start screen, with
+  the RTX VSR line and Recent tiles showing render coverage),
+  `vsr-wipe.jpg` and `vsr-wipe-crop.png` (the player's plain scale against RTX
+  VSR on one frame), `export-stages-vsr.jpg` (the export window with the
+  Upscaler row), and `neural-strength.jpg` (the image adjustments window, from
+  4 October 2026).
+- `docs/media/neural-comparison-demo.mp4` (24.8 s, 1080p) with poster and WebP
+  preview; `docs/media/social/card-1200x630.jpg` (1200x630 link preview).
+- Eight verification reports under `docs/` and measurement data under
+  `docs/measurements/`.
+
+Absent, and not to be invented: testimonials, named users, press coverage,
+pricing, benchmark claims beyond the measured numbers already published in
+`docs/ARCHITECTURE.md` ("Decisions and the measurements behind them") and the
+verification documents.
+
+The screenshots are frames of official game trailers (007 First Light, Mafia:
+The Old Country, GTA VI Trailer 2). Provenance is documented; the usage matches
+what the README already does.
+
+## Product Principles
+
+1. **Show, do not claim.** The product's whole argument is a visible difference
+   between two frames. Anything that describes instead of showing is weaker.
+2. **State the caveats plainly.** Unsigned runtime, community project, Windows
+   and RTX only. Burying these would betray the repository's voice.
+3. **Numbers over adjectives.** The project measures things and publishes the
+   measurements; the site should inherit that habit.
+4. **The download must always be real.** A version, a size, a checksum, and a
+   link that resolves.
+
+## Accessibility & Inclusion
+
+No product-specific standard was previously established. The comparison
+interaction must be operable by keyboard and not depend on a pointer drag, since
+it is the primary evidence on the surface and the only way to reach the argument.

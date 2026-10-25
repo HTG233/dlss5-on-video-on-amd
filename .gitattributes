@@ -1,0 +1,6 @@
+* text=auto
+
+# The two .cmd wrappers in dist/ are GBK-encoded and must keep CRLF. Git
+# rewriting their line endings corrupts the Chinese command lines under cmd.
+*.cmd -text
+*.bat -text

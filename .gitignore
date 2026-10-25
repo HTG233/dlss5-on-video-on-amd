@@ -1,0 +1,40 @@
+# Runtime binaries and release archives.
+# Four files in the shipped package exceed GitHub's 100 MB per-file limit
+# (ffmpeg.exe, ffprobe.exe, nvngx_dlssnr.dll, dlssnr.bin), so the binaries are
+# distributed as a Release asset rather than committed here.
+engine/
+*.7z
+*.zip
+*.rar
+
+# Build products
+*.obj
+*.o
+*.pdb
+*.ilk
+*.exp
+*.res
+build/
+out/
+cmake-build-*/
+.vs/
+gui/*.exe
+
+# Runtime leftovers. A single conversion writes these into engine/ and they
+# contain the operator's local paths and private video file names.
+DLSSVideoPlayer.log
+NeuralWorker.log
+ReShade.log
+mochizuki_nr.log
+ngx_logs/
+cache/
+
+# Node tooling for the demo video
+node_modules/
+
+# Editors and OS
+.vscode/
+Thumbs.db
+.DS_Store
+__pycache__/
+*.pyc

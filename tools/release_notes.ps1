@@ -1,0 +1,120 @@
+[CmdletBinding()]
+param(
+    # owner/name, for the CHANGELOG link at the tag.
+    [Parameter(Mandatory = $true)][string]$Repository,
+    [string]$OutFile
+)
+
+$ErrorActionPreference = 'Stop'
+Set-StrictMode -Version Latest
+
+# The release body was the generated commit list, which says what was committed
+# rather than what changed for someone installing it. The CHANGELOG section is
+# the other extreme - 470 lines for 0.22.0, which buries the download. README's
+# "What changed" paragraph for this version is the short version the repository
+# already maintains, so that is the body, with the full section one link away.
+#
+# The release workflow runs this to publish; the build workflow runs it on a
+# pull request that changes VERSION, so both guards below fail the PR rather
+# than the tag push.
+$repositoryRoot = Split-Path -Parent $PSScriptRoot
+$version = (Get-Content -LiteralPath (Join-Path $repositoryRoot 'VERSION') -Raw).Trim()
+$tag = "dlss5-video-player-v$version"
+if (-not $OutFile) { $OutFile = Join-Path $repositoryRoot 'release-notes.md' }
+$OutFile = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutFile)
+
+# The cut still has to have happened: a tag pushed while the section is still
+# called Unreleased is the mistake this catches.
+if (-not (Select-String -LiteralPath (Join-Path $repositoryRoot 'CHANGELOG.md') -Pattern "^## $([regex]::Escape($version))( |`$)" -Quiet)) {
+    throw "CHANGELOG.md has no '## $version' section; cut it before tagging."
+}
+
+# README is UTF-8 without a BOM, which Windows PowerShell 5.1 (the release
+# workflow's shell) reads as the ANSI code page: "2 × 2" reached the notes as
+# "2 Ã— 2". WriteAllText below writes UTF-8, so read it as UTF-8 too.
+$lines = Get-Content -LiteralPath (Join-Path $repositoryRoot 'README.md') -Encoding UTF8
+$start = $null
+for ($i = 0; $i -lt $lines.Count; $i++) {
+    if ($lines[$i] -match "^\*\*$([regex]::Escape($version))\*\* \(") { $start = $i; break }
+}
+if ($null -eq $start) {
+    throw "README.md has no '**$version** (date)' entry under What changed; write it before tagging."
+}
+$end = $lines.Count
+# The entry ends at the next version's entry, the section's next heading, or its
+# "Earlier releases" pointer, whose relative link would be dead on the release
+# page. With one entry under a "What's new" heading, stopping only at the next
+# version copied the rest of README into the notes.
+for ($i = $start + 1; $i -lt $lines.Count; $i++) {
+    if ($lines[$i] -match '^\*\*[0-9]+\.[0-9]+\.[0-9]+\*\* \(' -or $lines[$i] -match '^#{1,6} ' -or $lines[$i] -match '^Earlier releases ') { $end = $i; break }
+}
+
+# Every guide that describes the current tree carries one line under its title:
+#
+#     _Verified against <version> (<short sha>) on <YYYY-MM-DD>._
+#
+# It records when someone last read the document against the code, not when
+# the file was last touched, so a stamp behind VERSION is the signal that a
+# release is about to ship a guide nobody re-read. The list is fixed here so a
+# guide cannot quietly stop carrying one; records of a date (verification
+# reports, measurements, screenshots) and verbatim upstream text (licences,
+# notices) are deliberately absent because re-stamping them would claim they
+# describe the current tree, which is the opposite of what they are. README is
+# absent too: it is the front page for people deciding whether to download, and
+# its release entry below is already checked against VERSION.
+#
+# A stamp only has to name this release's major.minor: a patch release is a
+# fix, and making every one re-stamp sixteen guides turned the stamp into a
+# sixteen-file commit per hotfix that recorded no re-reading at all. A minor or
+# major release still needs every guide re-read and re-stamped.
+$stampedDocs = @(
+    'TECHNICAL_OVERVIEW.md', 'CONTRIBUTING.md', 'SECURITY.md', 'THIRD_PARTY.md',
+    'docs/USAGE.md', 'docs/BUILDING.md', 'docs/TROUBLESHOOTING.md', 'docs/ARCHITECTURE.md',
+    'docs/DLSS5_SETUP.md', 'docs/RELATED_PROJECTS.md', 'docs/EXAMPLE_VIDEOS.md', 'docs/BENCHMARK.md',
+    'docs/media/README.md', 'tools/benchmark/README.md', 'tools/demo-video/README.md',
+    'external/youtube/README.md'
+)
+$stampPattern = '^_Verified against ([0-9]+\.[0-9]+\.[0-9]+) \(([0-9a-f]{7,40})\) on ([0-9]{4}-[0-9]{2}-[0-9]{2})\._$'
+$minorLine = ($version -split '\.')[0..1] -join '.'
+$stale = @()
+foreach ($doc in $stampedDocs) {
+    $path = Join-Path $repositoryRoot $doc
+    $stamp = Select-String -LiteralPath $path -Pattern $stampPattern | Select-Object -First 1
+    if (-not $stamp) { $stale += "$doc has no '_Verified against <version> (<sha>) on <date>._' line"; continue }
+    $stampedVersion = $stamp.Matches[0].Groups[1].Value
+    if ((($stampedVersion -split '\.')[0..1] -join '.') -ne $minorLine) {
+        $stale += "$doc was last verified against $stampedVersion, not a $minorLine.x release"
+    }
+}
+if ($stale.Count) {
+    throw ("Re-read these against the code and re-stamp them before tagging {0}:`n  {1}" -f $version, ($stale -join "`n  "))
+}
+$summary = ($lines[$start..($end - 1)] -join "`n").TrimEnd()
+
+# Re-uploads of DLSS 5 tools under other accounts have carried malware, so every
+# body names the one place this project publishes. README's Download section and
+# the site say the same.
+$officialDownload = 'The only official download location is https://github.com/2600th/dlss5-video-player/releases; copies anywhere else are not this project''s.'
+
+# CI builds, tests and attests the core zip. The complete zip with the neural
+# runtime is what the README tells people to download, and CI cannot fetch that
+# runtime, so the release is created as a draft and the maintainer attaches the
+# complete zip before publishing - which is why the intro can promise it.
+$intro = @(
+    'Windows x64, an NVIDIA RTX GPU and driver 610.47 or newer. Community project, not an',
+    'NVIDIA product; the neural runtime is a modified, unsigned community build.',
+    '',
+    ('Download `dlss5-video-player-v{0}-win64.zip`: the player with its neural runtime.' -f $version),
+    ('`DLSSVideoPlayer-v{0}-core-win64.zip` is the player alone, built and attested by CI.' -f $version),
+    'Each has a `.sha256` beside it. GitHub''s "Source code" zip does not run.',
+    $officialDownload,
+    ''
+)
+$tail = @(
+    '',
+    ('Every change: [CHANGELOG.md for {0}](https://github.com/{1}/blob/{2}/CHANGELOG.md).' -f $version, $Repository, $tag)
+)
+$body = (($intro + $summary + $tail) -join "`n").TrimEnd() + "`n"
+if (-not $body.Contains($officialDownload)) { throw 'The release body lost the official download notice.' }
+[IO.File]::WriteAllText($OutFile, $body)
+Write-Host "Release notes: $($body.Length) characters from README's $version entry, written to $OutFile."
